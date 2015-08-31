@@ -38,7 +38,7 @@ module Mapymo
       def build_key(hash_key_value, range_key_value = nil)
         key = { hash_key.attribute_name => hash_key_value }
         if range_key
-          key[range_key] = range_key_value
+          key[range_key.attribute_name] = range_key_value
         end
         key
       end
