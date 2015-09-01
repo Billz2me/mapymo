@@ -11,8 +11,12 @@ module Mapymo
     #
     # Returns true/false
     def save(options = {})
-      item = Mapymo.marshaler.object_to_item(self)
-      valid? && put_item(item, options)
+      if valid?
+        item = Mapymo.marshaler.object_to_item(self)
+        put_item(item, options)
+      else
+        false
+      end
     end
 
     # Public: .see #save

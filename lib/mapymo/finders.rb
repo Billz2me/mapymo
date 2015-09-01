@@ -50,29 +50,44 @@ module Mapymo
       #
       # Returns a list of results that match the query.
       def query(hash_key, range_key_condition = nil)
+        perform_query(hash_key, range_key_condition)
+      end
+
+      # Public: Perform a query on an index.
+      #
+      # index_name - The name of the index to query.
+      #
+      # See .query
+      def query_index(index_name, hash_key, range_key_condition = nil)
+        index = local_secondary_index(index_name) || global_secondary_index(index_name)
+        perform_query(hash_key, range_key_condition, index.key_schema, { index_name: index_name })
+      end
+
+      private
+
+      # Internal: The magic.
+      def perform_query(hash_key, range_key_condition = nil, key_schema = table.key_schema, options = {})
         key_condition_expression = "#{HASH_ATTR_NAME} = #{HASH_VAL}"
-        expression_attribute_names = { HASH_ATTR_NAME  => self.hash_key.attribute_name }
+        expression_attribute_names = { HASH_ATTR_NAME  => self.hash_key(key_schema).attribute_name }
         expression_attribute_values = { HASH_VAL => hash_key }
 
         if range_key_condition
           operator, *range_values = range_key_condition
           key_condition_expression += " AND #{build_range_key_expression(operator, range_values)}"
 
-          expression_attribute_names[RANGE_ATTR_NAME] = self.range_key.attribute_name
+          expression_attribute_names[RANGE_ATTR_NAME] = self.range_key(key_schema).attribute_name
           expression_attribute_values[RANGE_VAL1] = range_values[0]
           expression_attribute_values[RANGE_VAL2] = range_values[1] if range_values[1]
         end
 
         Mapymo.logger.debug "Querying #{key_condition_expression}, #{expression_attribute_names}, #{expression_attribute_values}"
 
-        items = table.query(key_condition_expression: key_condition_expression,
-                            expression_attribute_names: expression_attribute_names,
-                            expression_attribute_values: expression_attribute_values).items
+        items = table.query(options.merge(key_condition_expression: key_condition_expression,
+                              expression_attribute_names: expression_attribute_names,
+                              expression_attribute_values: expression_attribute_values)).items
 
         items.map { |i| Mapymo.marshaler.item_to_object(self, i) }
       end
-
-      private
 
       # Internal: Helper method to build the range key expression for a query operation.
       # Returns the range key expression string.

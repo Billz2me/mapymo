@@ -17,7 +17,7 @@ module Mapymo
       #     t.binary :binary
       #     t.provisioned_throughput({ read: 1, write: 1 })
       #   end
-      def define_table(table_name, &block)
+      def define_table(table_name = self.name.delete("::").pluralize, &block)
         self.table = Aws::DynamoDB::Table.new(table_name)
 
         table_definition = TableDefinition.new(table_name)
@@ -45,21 +45,31 @@ module Mapymo
 
       # Public: The hash key schema for this object.
       # Returns [Aws::DynamoDB::Types::KeySchemaElement]
-      def hash_key
-        @hash_key ||= key_attr(TableDefinition::HASH)
+      def hash_key(key_schema = table.key_schema)
+        key_attr(key_schema, TableDefinition::HASH)
       end
 
       # Public: The range key schema for this object.
       # Returns [Aws::DynamoDB::Types::KeySchemaElement]
-      def range_key
-        @range_key ||= key_attr(TableDefinition::RANGE)
+      def range_key(key_schema = table.key_schema)
+        key_attr(key_schema, TableDefinition::RANGE)
       end
 
-      private
+      # Public: Get a global secondary index definition by name.
+      def global_secondary_index(index_name)
+        indexes = table.global_secondary_indexes
+        indexes.find {|index| index.index_name.eql?(index_name)} if indexes
+      end
 
-      # Internal: Helper for finding the hash/range key in the key schema.
-      def key_attr(type)
-        table.key_schema.find { |key| key.key_type.eql?(type) }
+      # Public: Get a local secondary index definition by name.
+      def local_secondary_index(index_name)
+        indexes = table.local_secondary_indexes
+        indexes.find {|index| index.index_name.eql?(index_name)} if indexes
+      end
+
+      # Public: Helper for finding the hash/range key in the key schema.
+      def key_attr(key_schema, type)
+        key_schema.find { |key| key.key_type.eql?(type) }
       end
 
     end#class_methods
